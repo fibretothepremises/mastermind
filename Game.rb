@@ -4,17 +4,22 @@ class Game
 
   attr_reader :player_name, :player_role, :pegs, :board,
               :attempts_allowed, :code_length, :finished,
-              :code, :keys
-  attr_writer :code
+              :code, :keys, :round
+  attr_writer :code, :codebreaker
 
   def initialize(attempts_allowed=8, code_length=4)
     @player_name = nil
     @player_role = nil
+    @codebreaker = ''
     @board = []
     @pegs = ["🔵", "🔴", "💛", "💚", "💜", "🧡"]
+    @round = 0
+    @bagel = "⚫️"
+    @pico = "⚪️"
+    @fermi = "🕳 "
     @numbers = (1..6).to_a
     @attempt = ""
-    @attempt_count = 0
+    @round = 0
     @attempts_allowed = attempts_allowed
     @code_length = code_length
     @code = nil
@@ -27,19 +32,19 @@ class Game
     @attempts_allowed.times {@keys.push(["🕳 ", "🕳 ", "🕳 ", "🕳 "])}
   end
   def get_player_name
-    slow_print("\nEnter player name: ", 0.02)
+    slow_print("\nEnter player name: ", 0.00)
     @player_name = gets.upcase.chomp
   end
   def select_role
     slow_print("\nSelect role: codebreaker or codemaker?\n\n"\
-               "Type 'a' for codebreaker or 'b' for codemaker: ", 0.02)
+               "Type 'a' for codebreaker or 'b' for codemaker: ", 0.00)
     answer = gets.chomp.downcase
     if answer == 'a'
       @player_role = 'codebreaker'
     elsif answer == 'b'
       @player_role = 'codemaker'
     else
-      slow_print("Invalid response. Try again.\n", 0.02)
+      slow_print("Invalid response. Try again.\n", 0.00)
       select_role
     end
   end
@@ -48,9 +53,9 @@ class Game
   end
   def get_player_code
     print_pegs_and_numbers
-    slow_print("Enter your code: ", 0.02)
+    slow_print("Enter your code: ", 0.00)
     @code = gets.chomp.split("")
-    validate_or_retry(@code, get_player_code)
+    validate(@code)
   end
   def board_str
     str = "\n"
@@ -62,7 +67,7 @@ class Game
     str
   end
   def draw_board
-    slow_print(board_str, 0.005)
+    slow_print(board_str, 0.002)
   end
   def pegs_and_numbers_str
     "\nAvailable pegs:\n"\
@@ -71,33 +76,27 @@ class Game
     "1  2  3  4  5  6\n"
   end
   def print_pegs_and_numbers
-    slow_print(pegs_and_numbers_str, 0.02)
+    slow_print(pegs_and_numbers_str, 0.00)
   end
   def make_attempt
     @attempt = gets.chomp.split("")
-    validate_attempt
+    validate(@attempt)
     emojify
     insert_guess
     draw_board
     print_pegs_and_numbers
     confirm_guess
   end
-  def validate_attempt
-    p "you made it!"
-    if @attempt.size != 4
-      slow_print("Invalid response, try again: ", 0.02)
-      make_attempt
-      return
+  def validate(array)
+    valid = array.all? do |item|
+      @pegs.include?(item) || @numbers.include?(item.to_i)
     end
-    puts "4 size confirmed."
-    @attempt.each do |item|
-      if !(@pegs.include?(item)) && !(@numbers.include?(item.to_i))
-        slow_print("Invalid response, try again: ", 0.02)
-        make_attempt
-        break
-      end
+    if !valid || array.size != 4
+      slow_print("Invalid response, try again: ", 0.00)
+      array = gets.chomp.split("")
+      validate(array)
     end
-    puts "passed array all test"
+    slow_print("Code validated.", 0.00)
   end
   def emojify
     @attempt = @attempt.map! do |c|
@@ -109,58 +108,67 @@ class Game
     end
   end
   def insert_guess
-    @board[@attempt_count] = []
-    @attempt.each { |peg| @board[@attempt_count] << peg }
+    @board[@round] = []
+    @attempt.each { |peg| @board[@round] << peg }
   end
   def confirm_guess
     slow_print("\nType 'y' to confirm attempt or "\
-               "'n' to change your code attempt: ", 0.02)
+               "'n' to change your code attempt: ", 0.00)
     answer = gets.chomp.downcase
     if answer == "y" || answer == "yes"
       make_keys
     elsif answer == "n" || answer == "no"
-      slow_print("\nChange code attempt: ", 0.02)
+      slow_print("\nChange code attempt: ", 0.00)
       make_attempt
     else
-      slow_print("Invalid response. Try again.\n", 0.02)
+      slow_print("Invalid response. Try again.\n", 0.00)
       sleep(0.5)
       confirm_guess
     end
   end
   def make_keys
-    @keys[@attempt_count] = []
+    @keys[@round] = []
+    unmatched = Array.new(@code)
     matched = []
     @attempt.each_with_index do |v, i|
-      if v == @code[i]
-        @keys[@attempt_count].prepend("⚫️")  
-        matched << v
-      elsif @code.include?(v)
-        total = @code.select {|item| item == v}
-        matched_total = matched.select {|item| item == v}
-        if (total.size > matched_total.size)
-          @keys[@attempt_count].append("⚪️")
-          matched << v
-        end
+      if v == unmatched[i] && v != nil
+        unmatched[i] = nil
+        @attempt[i] = nil
+        @keys[@round].prepend(@bagel)
       end
     end
-    while @keys[@attempt_count].size < @code.size
-      @keys[@attempt_count] << "🕳 "
+    @attempt.each_with_index do |v, i|
+      if unmatched.include?(v) && v != nil
+        unmatched.delete_at(unmatched.index(v))
+        @keys[@round].append(@pico)
+      end
     end
-    if @keys[@attempt_count].all?("⚫️")
-      player_won
-    elsif @attempt_count == @attempts_allowed - 1
+    while @keys[@round].size < @code.size
+      @keys[@round] << @fermi
+    end
+    if @keys[@round].all?(@bagel)
+      codebreaker_won
+    elsif @round == @attempts_allowed - 1
       codemaker_won
     else
-      @attempt_count += 1
+      @round += 1
     end
   end
-  def player_won
+  def codebreaker_won
     @finished = true
-    slow_print("\nWe have a winner! Congrats #{@codebreaker},\nyou broke the gahhd damn code my geeeeee~\n", 0.02)
+    draw_board
+    slow_print("\nWe have a winner! Congrats #{@codebreaker},\nyou broke the gahhd damn code my geeeeee~\n", 0.00)
   end
   def codemaker_won
     @finished = true
-    slow_print("\nUnlucky, you have used all #{attempts_allowed} "\
-               "available attempts to break the code.\n", 0.02)
+    draw_board
+    slow_print("\nUnlucky, all #{attempts_allowed} "\
+               "attempts have been used to break the code.\n", 0.00)
+  end
+  def eval_computer_attempt(attempt)
+    @attempt = attempt
+    insert_guess
+    draw_board
+    make_keys
   end
 end
