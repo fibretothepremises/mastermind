@@ -7,7 +7,7 @@ class Game
               :code, :keys, :round
   attr_writer :code, :codebreaker
 
-  def initialize(attempts_allowed=8, code_length=4)
+  def initialize(attempts_allowed=15, code_length=4)
     @player_name = nil
     @player_role = nil
     @codebreaker = ''
@@ -56,6 +56,7 @@ class Game
     slow_print("Enter your code: ", 0.00)
     @code = gets.chomp.split("")
     validate(@code)
+    emojify(@code)
   end
   def board_str
     str = "\n"
@@ -81,7 +82,7 @@ class Game
   def make_attempt
     @attempt = gets.chomp.split("")
     validate(@attempt)
-    emojify
+    emojify(@attempt)
     insert_guess
     draw_board
     print_pegs_and_numbers
@@ -94,12 +95,12 @@ class Game
     if !valid || array.size != 4
       slow_print("Invalid response, try again: ", 0.00)
       array = gets.chomp.split("")
-      validate(array)
+      return validate(array)
     end
     slow_print("Code validated.", 0.00)
   end
-  def emojify
-    @attempt = @attempt.map! do |c|
+  def emojify(code)
+    code = code.map! do |c|
       if c.to_i > 0
         @pegs[(c.to_i)-1]
       else

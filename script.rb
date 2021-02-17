@@ -19,7 +19,7 @@ case game.player_role
 when 'codebreaker'
   game.codebreaker = game.player_name
   computer.generate_code(game.pegs, game.code_length)
-  game.set_computer_code(game.pegs, computer.code)
+  game.set_computer_code(computer.code)
   while game.finished == false
     game.draw_board
     game.print_pegs_and_numbers
@@ -27,14 +27,18 @@ when 'codebreaker'
     game.make_attempt
   end
 when 'codemaker'
-  game.set_player_computer
   game.codebreaker = 'COMPUTER'
+  game.get_player_code
   while game.finished == false
+    puts "\nRound #{game.round + 1}: \n"
     game.draw_board
     game.print_pegs_and_numbers
-    slow_print("Computer making an attempt: ". 0.00)
+    slow_print("Computer making an attempt: ", 0.00)
     computer.make_attempt(game.board, game.keys)
+    puts "New attempt created."
+    puts "Attempt: #{computer.attempts[game.round]}"
     game.eval_computer_attempt(computer.attempts[game.round])
+  end
 end
 
 
